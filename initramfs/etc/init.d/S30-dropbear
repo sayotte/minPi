@@ -1,0 +1,17 @@
+#!/bin/sh
+# Start dropbear SSH server
+
+case "$1" in
+start)
+    # Generate host keys if missing
+    for type in rsa ecdsa ed25519; do
+        keyfile="/etc/dropbear/dropbear_${type}_host_key"
+        if [ ! -f "$keyfile" ]; then
+            dropbearkey -t "$type" -f "$keyfile" 2>/dev/null
+        fi
+    done
+
+    # Start dropbear (-R: generate keys on demand, -B: allow blank passwords — remove for production)
+    dropbear -R -p 22
+    ;;
+esac

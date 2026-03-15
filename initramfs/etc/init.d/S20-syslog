@@ -1,0 +1,18 @@
+#!/bin/sh
+# Start syslog daemon
+
+case "$1" in
+start)
+    if [ -f /etc/syslog.conf ]; then
+        # Remote syslog if configured
+        REMOTE=$(grep -o '@[^ ]*' /etc/syslog.conf | head -1)
+        if [ -n "$REMOTE" ]; then
+            syslogd -R "${REMOTE#@}" -L
+        else
+            syslogd
+        fi
+    else
+        syslogd
+    fi
+    ;;
+esac

@@ -1,0 +1,20 @@
+# Kernel source clone
+linux/
+
+# Build outputs
+minpi.img
+initramfs.cpio.gz
+kernel/kernel8.img
+kernel/dtbs/
+kernel/config
+kernel/out/
+
+# Fetched firmware blobs
+firmware/
+
+# Fetched/compiled binaries in initramfs
+initramfs/bin/busybox
+initramfs/bin/scp
+initramfs/sbin/dropbear
+initramfs/sbin/dropbearkey
+initramfs/sbin/init

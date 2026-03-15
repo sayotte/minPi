@@ -1,0 +1,23 @@
+# minPi firmware config
+
+# Boot in 64-bit mode
+arm_64bit=1
+
+# Use kernel8.img (aarch64)
+kernel=kernel8.img
+
+# Load initramfs into RAM
+initramfs initramfs.cpio.gz followkernel
+
+# Serial console
+enable_uart=1
+
+# GPU memory — minimum, headless by default
+# Increase to 64 or 128 if using HDMI
+gpu_mem=16
+
+# No splash screen
+disable_splash=1
+
+# Disable unnecessary hardware at firmware level
+dtparam=audio=off

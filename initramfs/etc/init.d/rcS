@@ -1,0 +1,21 @@
+#!/bin/sh
+# Master init script — mount virtual filesystems, then run numbered scripts
+
+# Mount virtual filesystems
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev
+mkdir -p /dev/pts
+mount -t devpts devpts /dev/pts
+mount -t tmpfs tmpfs /tmp
+mount -t tmpfs tmpfs /var/run
+
+# Set hostname
+if [ -f /etc/hostname ]; then
+    hostname "$(cat /etc/hostname)"
+fi
+
+# Run init scripts in order
+for script in /etc/init.d/S[0-9][0-9]-*; do
+    [ -x "$script" ] && "$script" start
+done

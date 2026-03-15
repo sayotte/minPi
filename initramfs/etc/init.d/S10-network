@@ -1,0 +1,25 @@
+#!/bin/sh
+# Bring up networking
+
+case "$1" in
+start)
+    # Loopback
+    ip link set lo up
+    ip addr add 127.0.0.1/8 dev lo
+
+    # Ethernet (Pi 3B, 3B+ — device name varies)
+    for iface in eth0; do
+        if [ -e "/sys/class/net/$iface" ]; then
+            ip link set "$iface" up
+            udhcpc -i "$iface" -s /etc/udhcpc.script -b -q
+        fi
+    done
+
+    # WiFi (Zero 2 W, 3A+, 3B, 3B+ — requires firmware + config)
+    if [ -e /sys/class/net/wlan0 ]; then
+        ip link set wlan0 up
+        # wpa_supplicant or similar would go here
+        # For now, WiFi setup is manual / app-specific
+    fi
+    ;;
+esac

@@ -1,0 +1,8 @@
+#!/bin/sh
+# Application entry point — replace with device-specific logic
+
+case "$1" in
+start)
+    echo "minPi booted successfully" > /dev/kmsg
+    ;;
+esac
