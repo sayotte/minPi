@@ -8,28 +8,67 @@ the kernel extracts into RAM at boot. After boot, the SD card is never touched.
 
 To change what's on the system, you edit the `initramfs/` tree and rebuild.
 
-## Adding a binary
+## Adding Alpine packages (easiest)
 
-All binaries must be **statically linked** (or linked against musl). There is no
-glibc, no dynamic linker, and no package manager on the running system.
+Use `add-package.sh` to pull pre-built Alpine Linux packages directly into the
+initramfs. This automatically includes the musl dynamic linker.
 
-1. Cross-compile your program for aarch64 with `-static`:
+```sh
+podman run --rm -v .:/build minpi-build \
+    /build/scripts/add-package.sh python3 curl htop
+```
 
-   ```sh
-   aarch64-linux-gnu-gcc -static -o myapp myapp.c
-   ```
+Then rebuild:
 
-   Or build inside the container:
+```sh
+podman run --rm -v .:/build minpi-build \
+    sh -c '/build/scripts/build-initramfs.sh && /build/scripts/build-image.sh'
+```
 
-   ```sh
-   podman run --rm -v .:/build minpi-build \
-       aarch64-linux-gnu-gcc -static -o /build/initramfs/bin/myapp /build/src/myapp.c
-   ```
+Packages are extracted into the initramfs tree (`/usr/bin/`, `/usr/lib/`, etc.)
+and included in the next image build. Dependencies are resolved automatically
+(one level deep).
 
-2. Place the binary in `initramfs/bin/` or `initramfs/sbin/`.
+The musl dynamic linker is included in the base image, so Alpine's dynamically
+linked binaries work out of the box.
 
-3. If the build is non-trivial, add it as a step in `scripts/build-initramfs.sh`
-   so it's reproducible from a clean checkout.
+## Adding a static binary
+
+For custom software, cross-compile for aarch64 with `-static`:
+
+```sh
+aarch64-linux-gnu-gcc -static -o myapp myapp.c
+```
+
+Or build inside the container:
+
+```sh
+podman run --rm -v .:/build minpi-build \
+    aarch64-linux-gnu-gcc -static -o /build/initramfs/bin/myapp /build/src/myapp.c
+```
+
+Place the binary in `initramfs/bin/` or `initramfs/sbin/`.
+
+## Building kernel modules
+
+Loadable kernel modules are supported. The base kernel build installs its
+built-in modules to `initramfs/lib/modules/`.
+
+To build an out-of-tree module:
+
+```sh
+podman run --rm \
+    -v .:/build \
+    -v minpi-linux-src:/build/linux \
+    -v minpi-linux-out:/build/linux-out \
+    minpi-build /build/scripts/build-module.sh /build/my-driver/
+```
+
+The module source directory must contain a standard kernel module `Makefile`.
+The resulting `.ko` file will be in the source directory. Copy it to
+`initramfs/lib/modules/<version>/extra/` and rebuild the image.
+
+To load a module at boot, add `modprobe <name>` to an init script.
 
 ## Running something at boot
 
@@ -40,6 +79,7 @@ The naming convention is `S<NN>-<name>`, where `<NN>` controls ordering:
 
 | Range | Purpose              | Examples          |
 |-------|----------------------|-------------------|
+| 05    | Console setup        | S05-console       |
 | 10    | Networking           | S10-network       |
 | 20    | System services      | S20-syslog        |
 | 30    | Infrastructure daemons | S30-dropbear    |
@@ -67,20 +107,14 @@ To add a new service:
 Drop them anywhere under `initramfs/etc/`. They end up at the same path on the
 running system. For example, `initramfs/etc/myapp.conf` becomes `/etc/myapp.conf`.
 
-## WiFi firmware
+## WiFi
 
-The brcmfmac driver needs firmware blobs in the initramfs at
-`/lib/firmware/brcm/`. The required files depend on the board:
+WiFi firmware blobs are fetched by `scripts/fetch-wifi-firmware.sh` and placed
+in `initramfs/lib/firmware/brcm/`.
 
-- Zero 2 W: `brcmfmac43436-sdio.bin`, `brcmfmac43436-sdio.clm_blob`,
-  `brcmfmac43436-sdio.txt`
-- Pi 3B: `brcmfmac43430-sdio.bin`, `brcmfmac43430-sdio.txt`
-- Pi 3B+: `brcmfmac43455-sdio.bin`, `brcmfmac43455-sdio.clm_blob`,
-  `brcmfmac43455-sdio.txt`
-
-These can be copied from the
-[linux-firmware](https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/tree/brcm)
-repository into `initramfs/lib/firmware/brcm/`.
+To connect, create `/etc/wpa_supplicant.conf` (see the `.example` file) before
+building. The network init script will automatically start `wpa_supplicant` and
+run DHCP on `wlan0` if the config file exists.
 
 ## Rebuilding
 
@@ -104,18 +138,21 @@ kernel. The kernel build takes minutes; the initramfs repack takes seconds.
 
 If you need a new kernel feature (e.g. a driver for attached hardware):
 
-1. Edit `kernel/config.fragment` — add the `CONFIG_*` symbols you need.
+1. Edit the disable/enable lines in `scripts/build-kernel.sh`.
 2. Rebuild the kernel:
 
    ```sh
-   podman run --rm -v .:/build -v minpi-linux-src:/build/linux \
+   podman run --rm \
+       -v .:/build \
+       -v minpi-linux-src:/build/linux \
+       -v minpi-linux-out:/build/linux-out \
        minpi-build /build/scripts/build-kernel.sh
    ```
 
 3. Then rebuild the image as above.
 
 The resolved `.config` is saved to `kernel/config` after each build for
-reference, but `kernel/config.fragment` is the source of truth.
+reference.
 
 ## SSH access
 

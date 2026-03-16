@@ -16,7 +16,10 @@ firmware/
 initramfs/bin/
 initramfs/sbin/
 initramfs/init
-initramfs/lib/firmware/
+initramfs/lib/
+
+# Alpine package cache
+.apk-cache/
 
 # Generated at image build time
 boot/commit.txt

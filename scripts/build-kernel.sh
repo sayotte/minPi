@@ -26,8 +26,8 @@ mkdir -p "$KERNEL_OUT"
 echo "Generating config from bcm2711_defconfig..."
 make -C "$KERNEL_SRC" O="$KERNEL_OUT" bcm2711_defconfig
 
-# Disable modules (everything built-in)
-"$KERNEL_SRC/scripts/config" --file "$KERNEL_OUT/.config" --disable MODULES
+# Enable loadable modules
+"$KERNEL_SRC/scripts/config" --file "$KERNEL_OUT/.config" --enable MODULES
 
 # Clear built-in cmdline — we use cmdline.txt exclusively
 "$KERNEL_SRC/scripts/config" --file "$KERNEL_OUT/.config" \
@@ -455,7 +455,16 @@ echo "Resolved config saved to kernel/config"
 
 # Build
 echo "Building kernel with $NPROC jobs..."
-make -C "$KERNEL_SRC" O="$KERNEL_OUT" -j"$NPROC" Image dtbs
+make -C "$KERNEL_SRC" O="$KERNEL_OUT" -j"$NPROC" Image dtbs modules
+
+# Install modules into initramfs
+echo "Installing modules..."
+make -C "$KERNEL_SRC" O="$KERNEL_OUT" \
+    INSTALL_MOD_PATH="$TOPDIR/initramfs" \
+    modules_install
+# Remove build/source symlinks (they point to the build machine)
+rm -f "$TOPDIR/initramfs/lib/modules"/*/build
+rm -f "$TOPDIR/initramfs/lib/modules"/*/source
 
 # Copy kernel image (raw, no appended DTB — firmware loads DTB separately)
 IMAGE="$KERNEL_OUT/arch/arm64/boot/Image"
