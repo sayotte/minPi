@@ -1,0 +1,16 @@
+#!/bin/sh
+# Save overlay changes to the boot partition.
+# Run manually: persist-overlay
+# The SD card is read-only by default; this is the only thing that writes to it.
+
+UPPER="/tmp/.overlay/upper"
+
+if [ ! -d "$UPPER" ] || [ -z "$(ls -A "$UPPER" 2>/dev/null)" ]; then
+    echo "No overlay changes to save."
+    exit 0
+fi
+
+mount -o remount,rw /boot || { echo "Failed to remount /boot rw"; exit 1; }
+tar czf /boot/overlay.gz -C "$UPPER" .
+echo "Overlay saved to /boot/overlay.gz"
+mount -o remount,ro /boot

@@ -54,8 +54,8 @@ tar czf /boot/overlay.gz -C /tmp/.overlay/upper .
 mount -o remount,ro /boot
 ```
 
-Or simply reboot — `fake-hwclock-save` runs at shutdown and saves both the
-clock and the overlay automatically.
+Then run `persist-overlay` to write the changes to the SD card. This is
+manual and explicit — the SD card is never written to unless you ask for it.
 
 ### How it works
 
@@ -187,10 +187,9 @@ instead of DHCP. Other interfaces still use DHCP.
 
 ## Time
 
-The Pi has no battery-backed real-time clock. minPi handles this with:
+The Pi has no battery-backed real-time clock. The clock starts at epoch on
+every boot and is corrected once NTP runs.
 
-- **fake-hwclock**: saves the current time to `/boot/fake-hwclock.data` at
-  shutdown, restores it on next boot.
 - **ntpd**: busybox NTP daemon starts after networking. Configure servers in
   `/etc/ntp.conf` (one `server <host>` per line) or accept the defaults
   (`pool.ntp.org`, `time.google.com`).
