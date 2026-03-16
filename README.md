@@ -77,8 +77,8 @@ ssh root@<ip-address>
 
 ## Customizing
 
-See [ADDING-SOFTWARE.md](ADDING-SOFTWARE.md) for how to add binaries,
-services, and configuration to the image.
+See [CUSTOMIZATION.md](CUSTOMIZATION.md) for runtime config persistence,
+adding packages, WiFi setup, kernel modules, and more.
 
 ## Design
 

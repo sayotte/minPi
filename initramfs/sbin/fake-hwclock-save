@@ -1,5 +1,14 @@
 #!/bin/sh
-# Save current time to boot partition for fake-hwclock restore on next boot
+# Save current time and overlay changes to boot partition
 mount -o remount,rw /boot 2>/dev/null
+
+# Save clock
 date -u '+%Y-%m-%d %H:%M:%S' > /boot/fake-hwclock.data
+
+# Save overlay (only files that differ from the base system)
+if [ -d /tmp/.overlay/etc-upper ] && [ "$(ls -A /tmp/.overlay/etc-upper 2>/dev/null)" ]; then
+    tar czf /boot/overlay.gz -C /tmp/.overlay/etc-upper .
+    echo "Overlay saved"
+fi
+
 mount -o remount,ro /boot 2>/dev/null

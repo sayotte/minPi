@@ -78,7 +78,7 @@ $CFG --disable UDF_FS
 # VFAT_FS left enabled — boot partition, USB drives
 $CFG --disable SQUASHFS
 $CFG --disable FUSE_FS
-$CFG --disable OVERLAY_FS
+# OVERLAY_FS left enabled — used for runtime change tracking
 $CFG --disable AUTOFS_FS
 
 # --- Tier 4: Unnecessary subsystems ---
