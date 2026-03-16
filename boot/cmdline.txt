@@ -1,1 +1,1 @@
-console=tty1 console=ttyAMA0,115200 loglevel=7
+console=tty1 console=ttyAMA0,115200 loglevel=7 brcmfmac.feature_disable=0x82000

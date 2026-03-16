@@ -1,0 +1,14 @@
+#!/bin/sh
+# Set up console: keymap and terminal type
+
+case "$1" in
+start)
+    # Set terminal type for framebuffer console
+    export TERM=linux
+
+    # Load US keymap if available
+    if [ -f /etc/keymap.bmap ]; then
+        loadkmap < /etc/keymap.bmap
+    fi
+    ;;
+esac

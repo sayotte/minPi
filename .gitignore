@@ -16,6 +16,7 @@ firmware/
 initramfs/bin/
 initramfs/sbin/
 initramfs/init
+initramfs/lib/firmware/
 
 # Generated at image build time
 boot/commit.txt

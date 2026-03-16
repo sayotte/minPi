@@ -16,12 +16,16 @@ RUN echo 'Acquire::Check-Date "false";' > /etc/apt/apt.conf.d/99no-check-date \
     git \
     ca-certificates \
     wget \
-    # Dropbear build dependencies
+    # Dropbear / wpa_supplicant / iw build dependencies
     bzip2 \
     autoconf \
+    pkg-config \
+    libnl-3-dev \
+    libnl-genl-3-dev \
     # initramfs packing
     cpio \
     gzip \
+    xz-utils \
     # SD card image assembly
     dosfstools \
     mtools \

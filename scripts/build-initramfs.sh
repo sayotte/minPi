@@ -80,6 +80,83 @@ else
     echo "dropbear already present"
 fi
 
+# --- Build static wpa_supplicant ---
+WPA="$INITRAMFS/sbin/wpa_supplicant"
+if [ ! -f "$WPA" ]; then
+    echo "Building static wpa_supplicant..."
+    WPA_VER="2.11"
+    WPA_SRC="/tmp/wpa_supplicant-${WPA_VER}"
+
+    if [ ! -d "$WPA_SRC" ]; then
+        wget -q -O /tmp/wpa.tar.gz \
+            "https://w1.fi/releases/wpa_supplicant-${WPA_VER}.tar.gz"
+        tar -xzf /tmp/wpa.tar.gz -C /tmp
+    fi
+
+    cd "$WPA_SRC/wpa_supplicant"
+
+    # Config: WPA2/WPA3-PSK, OpenSSL TLS, static
+    cat > .config <<'WPACONF'
+CONFIG_DRIVER_NL80211=y
+CONFIG_LIBNL32=y
+CONFIG_CTRL_IFACE=y
+CONFIG_CTRL_IFACE_UNIX=y
+CONFIG_WPA=y
+CONFIG_WPA2=y
+CONFIG_IEEE80211W=y
+CONFIG_TLS=openssl
+CONFIG_SAE=y
+CONFIG_NO_RANDOM_POOL=y
+CONFIG_PEERKEY=y
+WPACONF
+
+    # Build static
+    make -j"$(nproc)" \
+        LDFLAGS="-static" \
+        LIBS="-lssl -lcrypto -lnl-genl-3 -lnl-3 -lpthread -ldl" \
+        BINDIR=/sbin \
+        wpa_supplicant wpa_cli \
+        > /dev/null 2>&1
+
+    cp wpa_supplicant "$INITRAMFS/sbin/wpa_supplicant"
+    cp wpa_cli "$INITRAMFS/sbin/wpa_cli"
+    chmod 755 "$INITRAMFS/sbin/wpa_supplicant" "$INITRAMFS/sbin/wpa_cli"
+    echo "wpa_supplicant installed: $(ls -lh "$INITRAMFS/sbin/wpa_supplicant" | awk '{print $5}')"
+
+    cd "$TOPDIR"
+    rm -rf "$WPA_SRC" /tmp/wpa.tar.gz
+else
+    echo "wpa_supplicant already present"
+fi
+
+# --- Build static iw ---
+IW="$INITRAMFS/sbin/iw"
+if [ ! -f "$IW" ]; then
+    echo "Building static iw..."
+    IW_VER="6.9"
+    IW_SRC="/tmp/iw-${IW_VER}"
+
+    if [ ! -d "$IW_SRC" ]; then
+        wget -q -O /tmp/iw.tar.xz \
+            "https://kernel.org/pub/software/network/iw/iw-${IW_VER}.tar.xz"
+        tar -xJf /tmp/iw.tar.xz -C /tmp
+    fi
+
+    cd "$IW_SRC"
+    make -j"$(nproc)" \
+        LDFLAGS="-static" \
+        > /dev/null 2>&1
+
+    cp iw "$INITRAMFS/sbin/iw"
+    chmod 755 "$INITRAMFS/sbin/iw"
+    echo "iw installed: $(ls -lh "$INITRAMFS/sbin/iw" | awk '{print $5}')"
+
+    cd "$TOPDIR"
+    rm -rf "$IW_SRC" /tmp/iw.tar.xz
+else
+    echo "iw already present"
+fi
+
 # --- Create busybox applet symlinks ---
 echo "Installing busybox symlinks..."
 for applet in $("$INITRAMFS/bin/busybox" --list 2>/dev/null || true); do

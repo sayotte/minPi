@@ -7,19 +7,28 @@ start)
     ip link set lo up
     ip addr add 127.0.0.1/8 dev lo
 
-    # Ethernet (Pi 3B, 3B+ — device name varies)
-    for iface in eth0; do
-        if [ -e "/sys/class/net/$iface" ]; then
-            ip link set "$iface" up
-            udhcpc -i "$iface" -s /etc/udhcpc.script -b -q
-        fi
+    # Ethernet (Pi 3B, 3B+ — USB-attached, takes time to enumerate)
+    echo -n "Waiting for eth0"
+    tries=0
+    while [ ! -e /sys/class/net/eth0 ] && [ "$tries" -lt 10 ]; do
+        echo -n "."
+        sleep 1
+        tries=$((tries + 1))
     done
+    echo ""
 
-    # WiFi (Zero 2 W, 3A+, 3B, 3B+ — requires firmware + config)
-    if [ -e /sys/class/net/wlan0 ]; then
+    if [ -e /sys/class/net/eth0 ]; then
+        ip link set eth0 up
+        udhcpc -i eth0 -s /etc/udhcpc.script -b -q
+    else
+        echo "eth0 not found"
+    fi
+
+    # WiFi
+    if [ -e /sys/class/net/wlan0 ] && [ -f /etc/wpa_supplicant.conf ]; then
         ip link set wlan0 up
-        # wpa_supplicant or similar would go here
-        # For now, WiFi setup is manual / app-specific
+        wpa_supplicant -B -i wlan0 -c /etc/wpa_supplicant.conf
+        udhcpc -i wlan0 -s /etc/udhcpc.script -b -q
     fi
     ;;
 esac

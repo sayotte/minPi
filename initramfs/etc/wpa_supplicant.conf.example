@@ -1,0 +1,9 @@
+# /etc/wpa_supplicant.conf
+# Copy this to /etc/wpa_supplicant.conf and edit before building.
+
+ctrl_interface=/var/run/wpa_supplicant
+
+network={
+    ssid="YOUR_SSID"
+    psk="YOUR_PASSWORD"
+}
