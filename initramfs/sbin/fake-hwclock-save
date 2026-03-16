@@ -1,0 +1,5 @@
+#!/bin/sh
+# Save current time to boot partition for fake-hwclock restore on next boot
+mount -o remount,rw /boot 2>/dev/null
+date -u '+%Y-%m-%d %H:%M:%S' > /boot/fake-hwclock.data
+mount -o remount,ro /boot 2>/dev/null

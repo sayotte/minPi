@@ -1,0 +1,19 @@
+#!/bin/sh
+# Mount boot partition and apply overlay if present
+#
+# To persist changes from the running system:
+#   mount -o remount,rw /boot
+#   tar czf /boot/overlay.tar.gz -C / etc/my-changed-file etc/other-file
+#   mount -o remount,ro /boot
+
+case "$1" in
+start)
+    mkdir -p /boot
+    mount -t vfat -o ro /dev/mmcblk0p1 /boot 2>/dev/null
+
+    if [ -f /boot/overlay.tar.gz ]; then
+        echo "Applying boot overlay..."
+        tar xzf /boot/overlay.tar.gz -C /
+    fi
+    ;;
+esac

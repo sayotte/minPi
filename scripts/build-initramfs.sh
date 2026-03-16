@@ -157,6 +157,9 @@ else
     echo "iw already present"
 fi
 
+# --- Install Alpine packages ---
+"$TOPDIR/scripts/add-package.sh" curl htop ethtool usbutils nano libgpiod i2c-tools
+
 # --- Create busybox applet symlinks ---
 echo "Installing busybox symlinks..."
 for applet in $("$INITRAMFS/bin/busybox" --list 2>/dev/null || true); do

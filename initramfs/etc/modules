@@ -1,0 +1,2 @@
+# Kernel modules to load at boot, one per line
+brcmfmac

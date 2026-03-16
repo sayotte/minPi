@@ -3,19 +3,70 @@
 ## How the image works
 
 The entire root filesystem lives in `initramfs/`. At build time,
-`build-initramfs.sh` packs that directory tree into `initramfs.cpio.gz`, which
-the kernel extracts into RAM at boot. After boot, the SD card is never touched.
+`build-initramfs.sh` packs that directory tree into a compressed archive, which
+the kernel extracts into RAM at boot. After boot, the SD card is never touched
+(the boot partition is mounted read-only at `/boot`).
 
 To change what's on the system, you edit the `initramfs/` tree and rebuild.
+
+## Persisting changes at runtime (boot overlay)
+
+You don't need to rebuild the image just to change a config file. minPi
+supports a **boot overlay**: a tarball on the boot partition that gets extracted
+over `/` early in the boot process (before networking, before services).
+
+### Making a change
+
+On the running Pi:
+
+```sh
+# Edit whatever you need
+vi /etc/wpa_supplicant.conf
+vi /etc/hostname
+
+# Persist it to the boot partition
+mount -o remount,rw /boot
+tar czf /boot/overlay.tar.gz -C / etc/wpa_supplicant.conf etc/hostname
+mount -o remount,ro /boot
+```
+
+On the next boot, `S01-overlay` extracts the tarball over `/` before any
+services start. You can include any files — configs, scripts, even binaries.
+
+### Updating an existing overlay
+
+To add files to an existing overlay without losing what's already there:
+
+```sh
+mount -o remount,rw /boot
+mkdir -p /tmp/overlay
+cd /tmp/overlay
+tar xzf /boot/overlay.tar.gz 2>/dev/null
+# Copy in new/changed files, preserving paths
+cp /etc/some-new-config etc/
+tar czf /boot/overlay.tar.gz *
+cp /tmp/overlay.tar.gz /boot/overlay.tar.gz   # not needed, tar wrote in place
+mount -o remount,ro /boot
+```
+
+### Removing the overlay
+
+```sh
+mount -o remount,rw /boot
+rm /boot/overlay.tar.gz
+mount -o remount,ro /boot
+```
+
+The system reverts to the base image on next boot.
 
 ## Adding Alpine packages (easiest)
 
 Use `add-package.sh` to pull pre-built Alpine Linux packages directly into the
-initramfs. This automatically includes the musl dynamic linker.
+initramfs. Dependencies (including shared libraries) are resolved automatically.
 
 ```sh
 podman run --rm -v .:/build minpi-build \
-    /build/scripts/add-package.sh python3 curl htop
+    /build/scripts/add-package.sh python3 cups whatever-else
 ```
 
 Then rebuild:
@@ -26,11 +77,12 @@ podman run --rm -v .:/build minpi-build \
 ```
 
 Packages are extracted into the initramfs tree (`/usr/bin/`, `/usr/lib/`, etc.)
-and included in the next image build. Dependencies are resolved automatically
-(one level deep).
+and included in the next image build. The musl dynamic linker is included in
+the base image, so Alpine's dynamically linked binaries work out of the box.
 
-The musl dynamic linker is included in the base image, so Alpine's dynamically
-linked binaries work out of the box.
+**Note:** Packages added this way become part of the base image. For quick
+experiments or per-device customization, consider putting the binaries in the
+boot overlay instead.
 
 ## Adding a static binary
 
@@ -68,7 +120,7 @@ The module source directory must contain a standard kernel module `Makefile`.
 The resulting `.ko` file will be in the source directory. Copy it to
 `initramfs/lib/modules/<version>/extra/` and rebuild the image.
 
-To load a module at boot, add `modprobe <name>` to an init script.
+To load a module at boot, add its name to `/etc/modules` (one per line).
 
 ## Running something at boot
 
@@ -77,13 +129,16 @@ executed in alphabetical order by `rcS`.
 
 The naming convention is `S<NN>-<name>`, where `<NN>` controls ordering:
 
-| Range | Purpose              | Examples          |
-|-------|----------------------|-------------------|
-| 05    | Console setup        | S05-console       |
-| 10    | Networking           | S10-network       |
-| 20    | System services      | S20-syslog        |
-| 30    | Infrastructure daemons | S30-dropbear    |
-| 90-99 | Application layer    | S99-app           |
+| Range | Purpose                | Examples          |
+|-------|------------------------|-------------------|
+| 01    | Boot overlay           | S01-overlay       |
+| 02    | Module loading         | S02-modules       |
+| 05    | Console setup          | S05-console       |
+| 10    | Networking             | S10-network       |
+| 15    | Time sync              | S15-ntpd          |
+| 20    | System services        | S20-syslog        |
+| 30    | Infrastructure daemons | S30-dropbear      |
+| 90-99 | Application layer      | S99-app           |
 
 To add a new service:
 
@@ -100,12 +155,7 @@ To add a new service:
 
 2. Make it executable: `chmod 755 initramfs/etc/init.d/S<NN>-myservice`
 
-3. Rebuild the initramfs.
-
-## Adding configuration files
-
-Drop them anywhere under `initramfs/etc/`. They end up at the same path on the
-running system. For example, `initramfs/etc/myapp.conf` becomes `/etc/myapp.conf`.
+3. Rebuild the initramfs, or add it via the boot overlay.
 
 ## WiFi
 
@@ -113,8 +163,19 @@ WiFi firmware blobs are fetched by `scripts/fetch-wifi-firmware.sh` and placed
 in `initramfs/lib/firmware/brcm/`.
 
 To connect, create `/etc/wpa_supplicant.conf` (see the `.example` file) before
-building. The network init script will automatically start `wpa_supplicant` and
-run DHCP on `wlan0` if the config file exists.
+building, or add it via the boot overlay. The network init script will
+automatically start `wpa_supplicant` and run DHCP on `wlan0` if the config
+file exists.
+
+## Time
+
+The Pi has no battery-backed real-time clock. minPi handles this with:
+
+- **fake-hwclock**: saves the current time to `/boot/fake-hwclock.data` at
+  shutdown, restores it on next boot. Not accurate, but prevents the clock
+  from starting at epoch.
+- **ntpd**: busybox NTP daemon syncs with `pool.ntp.org` and
+  `time.google.com` after networking is up.
 
 ## Rebuilding
 
@@ -161,7 +222,8 @@ RAM — they change every reboot). Root login with no password is enabled by
 default for initial setup.
 
 To add an authorized key, place it in
-`initramfs/etc/dropbear/authorized_keys` before building.
+`initramfs/etc/dropbear/authorized_keys` before building, or add it via the
+boot overlay.
 
 To disable password login, remove the empty password hash from
 `initramfs/etc/shadow` (set it to `!` or `*`).

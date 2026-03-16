@@ -22,6 +22,8 @@ RUN echo 'Acquire::Check-Date "false";' > /etc/apt/apt.conf.d/99no-check-date \
     pkg-config \
     libnl-3-dev \
     libnl-genl-3-dev \
+    # Module tools (depmod)
+    kmod \
     # initramfs packing
     cpio \
     gzip \

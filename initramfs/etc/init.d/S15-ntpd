@@ -1,0 +1,15 @@
+#!/bin/sh
+# Start NTP time sync
+
+case "$1" in
+start)
+    # Restore saved time if available (fake-hwclock)
+    if [ -f /boot/fake-hwclock.data ]; then
+        date -s "$(cat /boot/fake-hwclock.data)" 2>/dev/null
+        echo "Restored clock to $(cat /boot/fake-hwclock.data)"
+    fi
+
+    # Start NTP daemon (busybox ntpd, pool servers)
+    ntpd -p pool.ntp.org -p time.google.com
+    ;;
+esac

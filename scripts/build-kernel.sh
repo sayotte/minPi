@@ -38,12 +38,12 @@ CFG="$KERNEL_SRC/scripts/config --file $KERNEL_OUT/.config"
 # --- Tier 1: Zero-risk removals (no hardware present) ---
 $CFG --disable MEDIA_SUPPORT          # DVB, V4L2, cameras, IR blasters
 $CFG --disable INPUT_TOUCHSCREEN      # Touchscreens
-$CFG --disable W1                     # 1-Wire bus
+# W1 left enabled — DS18B20 temperature sensors are common
 $CFG --disable CAN                    # CAN bus
 $CFG --disable MTD                    # Raw flash / NOR / NAND
 $CFG --disable RC_CORE                # IR remote receivers
 $CFG --disable RTC_CLASS              # Battery-backed real-time clocks
-$CFG --disable NLS                    # Charset tables (FAT/NTFS codepages)
+# NLS left enabled — needed for FAT filesystem support
 
 # --- Tier 2: No-risk removals (features explicitly unwanted) ---
 $CFG --disable BT                     # Bluetooth
@@ -75,7 +75,7 @@ $CFG --disable NFSD
 $CFG --disable CIFS
 $CFG --disable ISO9660_FS
 $CFG --disable UDF_FS
-$CFG --disable VFAT_FS
+# VFAT_FS left enabled — boot partition, USB drives
 $CFG --disable SQUASHFS
 $CFG --disable FUSE_FS
 $CFG --disable OVERLAY_FS
@@ -86,11 +86,20 @@ $CFG --disable IIO                    # Industrial I/O (ADCs, IMUs, etc.)
 $CFG --disable STAGING                # Staging drivers (RPi camera, etc.)
 $CFG --disable ACCESSIBILITY          # Console accessibility
 $CFG --disable ANDROID                # Android binder
-$CFG --disable SCSI                   # SCSI (also disables USB mass storage)
+# SCSI left enabled — needed by USB mass storage
 $CFG --disable ATA                    # SATA
 $CFG --disable POWER_SUPPLY           # Battery / charger drivers
 # CONFIG_REGULATOR left enabled — WiFi power sequencing needs it
 $CFG --disable MFD_CORE               # Multi-function device drivers
+
+# --- Re-enabled for common headless peripherals ---
+$CFG --enable I2C_CHARDEV             # /dev/i2c-* userspace access
+$CFG --enable SPI_SPIDEV              # /dev/spidev* userspace access
+$CFG --enable VFAT_FS                 # FAT32 filesystem (mount boot partition, USB drives)
+$CFG --enable FAT_FS
+$CFG --enable NLS_CODEPAGE_437        # Needed by FAT
+$CFG --enable NLS_ISO8859_1           # Needed by FAT
+$CFG --enable NLS_UTF8
 
 # --- Tier 5: Virtual network interfaces and tunnels ---
 $CFG --disable BONDING                # NIC bonding
@@ -285,8 +294,7 @@ $CFG --disable SND_COMPRESS_OFFLOAD
 $CFG --disable SND_SPI
 $CFG --disable SND_DRIVERS
 
-# --- Tier 5h: NLS codepages (none needed without filesystems) ---
-$CFG --disable NLS_CODEPAGE_437
+# --- Tier 5h: NLS codepages (keep 437, ISO-8859-1, UTF-8 for FAT) ---
 $CFG --disable NLS_CODEPAGE_737
 $CFG --disable NLS_CODEPAGE_775
 $CFG --disable NLS_CODEPAGE_850
@@ -308,7 +316,6 @@ $CFG --disable NLS_CODEPAGE_949
 $CFG --disable NLS_CODEPAGE_950
 $CFG --disable NLS_CODEPAGE_1250
 $CFG --disable NLS_CODEPAGE_1251
-$CFG --disable NLS_ISO8859_1
 $CFG --disable NLS_ISO8859_2
 $CFG --disable NLS_ISO8859_3
 $CFG --disable NLS_ISO8859_4
@@ -333,7 +340,6 @@ $CFG --disable NLS_MAC_ICELAND
 $CFG --disable NLS_MAC_INUIT
 $CFG --disable NLS_MAC_ROMANIAN
 $CFG --disable NLS_MAC_TURKISH
-$CFG --disable NLS_UTF8
 
 # --- Tier 5i: Remaining HID vendor drivers ---
 $CFG --disable HID_ACRUX
@@ -417,9 +423,8 @@ $CFG --disable USB_IPHETH
 $CFG --disable USB_NET_CH9200
 $CFG --disable USB_NET_AQC111
 
-# --- Tier 6: Excess USB drivers (keep DWC2 + USB-net) ---
-$CFG --disable USB_SERIAL             # USB serial adapters
-$CFG --disable USB_STORAGE            # USB mass storage
+# --- Tier 6: Excess USB drivers (keep DWC2 + USB-net + serial + storage) ---
+# USB_SERIAL and USB_STORAGE left enabled — common headless peripherals
 $CFG --disable USB_GADGET             # USB gadget/device mode
 $CFG --disable USB_XHCI_HCD          # xHCI (USB 3.0 host)
 $CFG --disable USB_EHCI_HCD          # EHCI (USB 2.0 host — DWC2 has its own)
@@ -465,6 +470,11 @@ make -C "$KERNEL_SRC" O="$KERNEL_OUT" \
 # Remove build/source symlinks (they point to the build machine)
 rm -f "$TOPDIR/initramfs/lib/modules"/*/build
 rm -f "$TOPDIR/initramfs/lib/modules"/*/source
+
+# Generate modules.dep
+echo "Running depmod..."
+KREL=$(cat "$KERNEL_OUT/include/config/kernel.release")
+depmod -a -b "$TOPDIR/initramfs" "$KREL"
 
 # Copy kernel image (raw, no appended DTB — firmware loads DTB separately)
 IMAGE="$KERNEL_OUT/arch/arm64/boot/Image"

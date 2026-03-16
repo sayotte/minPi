@@ -1,4 +1,5 @@
 ::sysinit:/etc/init.d/rcS
 tty1::respawn:/sbin/getty 38400 tty1
+::shutdown:/sbin/fake-hwclock-save
 ::shutdown:/bin/kill -a
 ::restart:/sbin/init

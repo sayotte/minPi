@@ -113,21 +113,52 @@ install_pkg() {
     return 0
 }
 
-# Resolve and install dependencies (simple, non-recursive for now)
+# Find which package provides a shared library
+find_provider() {
+    local soname="$1"
+    local repo
+    for repo in $ALPINE_REPOS; do
+        fetch_index "$repo"
+        local result=$(awk -v so="$soname" '
+            /^P:/{name=substr($0,3)}
+            /^p:/{provides=substr($0,3)}
+            /^$/{
+                if (provides ~ so) { print name; exit }
+                provides=""
+            }
+        ' "$CACHE_DIR/APKINDEX-${repo}")
+        if [ -n "$result" ]; then
+            echo "$result"
+            return
+        fi
+    done
+}
+
+# Resolve and install dependencies (recursive, handles so: deps)
 install_with_deps() {
     local pkg="$1"
-    local deps dep depname
+    local deps dep depname provider
 
     # Install dependencies first
     deps=$(find_deps "$pkg")
     for dep in $deps; do
-        # Strip version constraints (e.g., "musl>=1.2" -> "musl")
-        depname=$(echo "$dep" | sed 's/[><=!].*//' | sed 's/~.*//')
-        # Skip virtual/so: dependencies
-        case "$depname" in
-            so:*|pc:*|cmd:*) continue ;;
+        case "$dep" in
+            so:*)
+                # Shared library — find the package that provides it
+                provider=$(find_provider "$dep")
+                if [ -n "$provider" ]; then
+                    install_with_deps "$provider"
+                fi
+                ;;
+            pc:*|cmd:*)
+                continue
+                ;;
+            *)
+                # Strip version constraints
+                depname=$(echo "$dep" | sed 's/[><=!].*//' | sed 's/~.*//')
+                install_with_deps "$depname"
+                ;;
         esac
-        install_pkg "$depname" 2>/dev/null || true
     done
 
     # Install the package itself

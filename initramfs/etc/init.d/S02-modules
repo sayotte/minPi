@@ -1,0 +1,16 @@
+#!/bin/sh
+# Load kernel modules
+
+case "$1" in
+start)
+    # Load modules listed in /etc/modules, one per line
+    if [ -f /etc/modules ]; then
+        while read -r mod args; do
+            case "$mod" in
+                ""|\#*) continue ;;
+            esac
+            modprobe $mod $args 2>/dev/null && echo "Loaded $mod" || echo "Failed to load $mod"
+        done < /etc/modules
+    fi
+    ;;
+esac
