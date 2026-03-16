@@ -1,11 +1,36 @@
 #!/bin/sh
 # Bring up networking
 
+configure_static() {
+    local iface="$1"
+    ip addr add "$ADDRESS/$NETMASK" dev "$iface"
+    [ -n "$GATEWAY" ] && ip route add default via "$GATEWAY" dev "$iface"
+    if [ -n "$DNS" ]; then
+        : > /etc/resolv.conf
+        [ -n "$DOMAIN" ] && echo "search $DOMAIN" >> /etc/resolv.conf
+        for ns in $DNS; do
+            echo "nameserver $ns" >> /etc/resolv.conf
+        done
+    fi
+}
+
+configure_dhcp() {
+    local iface="$1"
+    udhcpc -i "$iface" -s /etc/udhcpc.script -b -q
+}
+
 case "$1" in
 start)
     # Loopback
     ip link set lo up
     ip addr add 127.0.0.1/8 dev lo
+
+    # Load static config if present
+    STATIC_IFACE=""
+    if [ -f /etc/network.conf ]; then
+        . /etc/network.conf
+        STATIC_IFACE="$INTERFACE"
+    fi
 
     # Ethernet (Pi 3B, 3B+ — USB-attached, takes time to enumerate)
     echo -n "Waiting for eth0"
@@ -19,7 +44,27 @@ start)
 
     if [ -e /sys/class/net/eth0 ]; then
         ip link set eth0 up
-        udhcpc -i eth0 -s /etc/udhcpc.script -b -q
+
+        if [ "$STATIC_IFACE" = "eth0" ]; then
+            echo "eth0: static $ADDRESS/$NETMASK"
+            configure_static eth0
+        else
+            # Wait for link before DHCP
+            echo -n "Waiting for eth0 link"
+            tries=0
+            while [ "$(cat /sys/class/net/eth0/carrier 2>/dev/null)" != "1" ] && [ "$tries" -lt 5 ]; do
+                echo -n "."
+                sleep 1
+                tries=$((tries + 1))
+            done
+            echo ""
+
+            if [ "$(cat /sys/class/net/eth0/carrier 2>/dev/null)" = "1" ]; then
+                configure_dhcp eth0
+            else
+                echo "eth0: no link"
+            fi
+        fi
     else
         echo "eth0 not found"
     fi
@@ -28,7 +73,13 @@ start)
     if [ -e /sys/class/net/wlan0 ] && [ -f /etc/wpa_supplicant.conf ]; then
         ip link set wlan0 up
         wpa_supplicant -B -i wlan0 -c /etc/wpa_supplicant.conf
-        udhcpc -i wlan0 -s /etc/udhcpc.script -b -q
+
+        if [ "$STATIC_IFACE" = "wlan0" ]; then
+            echo "wlan0: static $ADDRESS/$NETMASK"
+            configure_static wlan0
+        else
+            configure_dhcp wlan0
+        fi
     fi
     ;;
 esac

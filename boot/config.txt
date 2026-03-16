@@ -14,8 +14,11 @@ enable_uart=1
 
 # Let firmware auto-detect and load the correct DTB from boot partition
 
-# GPU memory — increase if using HDMI
+# GPU memory
 gpu_mem=64
+
+# HDMI — safe mode: force hotplug, ignore EDID, 720p60, boost=4
+hdmi_safe=1
 
 # No splash screen
 disable_splash=1

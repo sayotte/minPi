@@ -12,11 +12,20 @@ kernel/out/
 # Fetched firmware blobs
 firmware/
 
-# Fetched/compiled binaries and generated symlinks in initramfs
+# Fetched/compiled binaries, packages, and generated symlinks in initramfs
 initramfs/bin/
 initramfs/sbin/
 initramfs/init
 initramfs/lib/
+initramfs/usr/
+initramfs/etc/ssl/
+initramfs/etc/ssl1.1/
+initramfs/etc/terminfo/
+initramfs/etc/nanorc
+initramfs/var/
+
+# Stale podman config
+.config
 
 # Alpine package cache
 .apk-cache/

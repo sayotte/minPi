@@ -2,7 +2,7 @@
 set -e
 
 TOPDIR="$(cd "$(dirname "$0")/.." && pwd)"
-KERNEL_BRANCH="rpi-6.6.y"
+KERNEL_BRANCH="rpi-6.12.y"
 KERNEL_REPO="https://github.com/raspberrypi/linux.git"
 KERNEL_SRC="${KERNEL_SRC:-/build/linux}"
 # Build output on case-sensitive filesystem (Linux volume, not macOS bind mount)

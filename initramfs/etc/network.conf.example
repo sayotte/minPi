@@ -1,0 +1,10 @@
+# Static network configuration
+# Copy to /etc/network.conf and edit, or add via boot overlay.
+# If this file exists, DHCP is skipped for the configured interface.
+
+INTERFACE=eth0
+ADDRESS=192.168.1.100
+NETMASK=24
+GATEWAY=192.168.1.1
+DNS=192.168.1.1
+DOMAIN=example.com

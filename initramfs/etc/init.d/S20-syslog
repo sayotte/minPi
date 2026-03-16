@@ -1,18 +1,19 @@
 #!/bin/sh
-# Start syslog daemon
+# Start syslog and klog daemons
 
 case "$1" in
 start)
+    SYSLOG_ARGS="-C"  # circular buffer for logread
+
     if [ -f /etc/syslog.conf ]; then
         # Remote syslog if configured
         REMOTE=$(grep -o '@[^ ]*' /etc/syslog.conf | head -1)
         if [ -n "$REMOTE" ]; then
-            syslogd -R "${REMOTE#@}" -L
-        else
-            syslogd
+            SYSLOG_ARGS="$SYSLOG_ARGS -R ${REMOTE#@} -L"
         fi
-    else
-        syslogd
     fi
+
+    syslogd $SYSLOG_ARGS
+    klogd
     ;;
 esac

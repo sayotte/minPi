@@ -9,7 +9,24 @@ start)
         echo "Restored clock to $(cat /boot/fake-hwclock.data)"
     fi
 
-    # Start NTP daemon (busybox ntpd, pool servers)
-    ntpd -p pool.ntp.org -p time.google.com
+    # Build ntpd args from config file or defaults
+    NTP_ARGS=""
+    if [ -f /etc/ntp.conf ]; then
+        while read -r line; do
+            case "$line" in
+                server\ *)
+                    NTP_ARGS="$NTP_ARGS -p ${line#server }"
+                    ;;
+                \#*|"")
+                    ;;
+            esac
+        done < /etc/ntp.conf
+    fi
+
+    if [ -z "$NTP_ARGS" ]; then
+        NTP_ARGS="-p pool.ntp.org -p time.google.com"
+    fi
+
+    ntpd $NTP_ARGS
     ;;
 esac

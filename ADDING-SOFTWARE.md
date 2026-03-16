@@ -45,7 +45,6 @@ tar xzf /boot/overlay.gz 2>/dev/null
 # Copy in new/changed files, preserving paths
 cp /etc/some-new-config etc/
 tar czf /boot/overlay.gz *
-cp /tmp/overlay.gz /boot/overlay.gz   # not needed, tar wrote in place
 mount -o remount,ro /boot
 ```
 

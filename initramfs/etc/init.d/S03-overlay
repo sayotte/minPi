@@ -9,11 +9,16 @@
 case "$1" in
 start)
     mkdir -p /boot
-    mount -t vfat -o ro /dev/mmcblk0p1 /boot 2>/dev/null
+    if ! mount -t vfat -o ro /dev/mmcblk0p1 /boot; then
+        echo "S03-overlay: could not mount boot partition"
+        return 0
+    fi
 
     if [ -f /boot/overlay.gz ]; then
         echo "Applying boot overlay..."
         tar xzf /boot/overlay.gz -C /
+    else
+        echo "No boot overlay found"
     fi
     ;;
 esac
