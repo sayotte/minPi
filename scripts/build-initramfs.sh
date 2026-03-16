@@ -158,7 +158,7 @@ else
 fi
 
 # --- Install Alpine packages ---
-"$TOPDIR/scripts/add-package.sh" curl htop ethtool usbutils nano libgpiod i2c-tools
+"$TOPDIR/scripts/add-base-package.sh" curl htop ethtool usbutils nano libgpiod i2c-tools
 
 # --- Create busybox applet symlinks ---
 echo "Installing busybox symlinks..."

@@ -12,11 +12,9 @@ kernel/out/
 # Fetched firmware blobs
 firmware/
 
-# Generated symlinks and compiled binaries in initramfs
-initramfs/bin/
-initramfs/sbin/
-initramfs/init
-initramfs/lib/
+# Generated at build time (not part of source tree)
+initramfs/lib/modules/
+initramfs/lib/firmware/
 
 # Stale podman config
 .config
