@@ -178,8 +178,10 @@ for applet in $("$INITRAMFS/bin/busybox" --list 2>/dev/null || true); do
     esac
 done
 
-# /init for kernel to find
-ln -sf bin/busybox "$INITRAMFS/init"
+# /init — overlay setup script (PID 1, runs before busybox init)
+cp "$INITRAMFS/init.sh" "$INITRAMFS/init"
+chmod 755 "$INITRAMFS/init"
+# /sbin/init — busybox init (runs after switch_root)
 ln -sf ../bin/busybox "$INITRAMFS/sbin/init"
 
 # --- Set permissions ---

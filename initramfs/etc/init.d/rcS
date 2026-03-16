@@ -1,5 +1,6 @@
 #!/bin/sh
-# Master init script — mount virtual filesystems, set up overlay, run services
+# Master init script — mount virtual filesystems, then run numbered scripts
+# Overlay is already set up by /init before busybox init starts.
 
 # Mount virtual filesystems
 mount -t proc proc /proc
@@ -7,28 +8,8 @@ mount -t sysfs sysfs /sys
 mount -t devtmpfs devtmpfs /dev
 mkdir -p /dev/pts
 mount -t devpts devpts /dev/pts
-mount -t tmpfs tmpfs /tmp
 mount -t tmpfs tmpfs /var/run
 mount -t tmpfs tmpfs /var/log
-
-# Mount boot partition (needed for overlay and fake-hwclock)
-mkdir -p /boot
-mount -t vfat -o ro /dev/mmcblk0p1 /boot 2>/dev/null
-
-# Set up overlayfs on /etc so runtime changes are tracked.
-# Lower = initramfs /etc (read-only)
-# Upper = tmpfs (writable, lost on reboot unless persisted)
-#
-# If /boot/overlay.gz exists, pre-populate the upper layer with it
-# before mounting the overlay — this restores previous changes.
-mkdir -p /tmp/.overlay/etc-upper /tmp/.overlay/etc-work
-if [ -f /boot/overlay.gz ]; then
-    echo "Restoring overlay..."
-    tar xzf /boot/overlay.gz -C /tmp/.overlay/etc-upper 2>/dev/null
-fi
-mount -t overlay overlay \
-    -o lowerdir=/etc,upperdir=/tmp/.overlay/etc-upper,workdir=/tmp/.overlay/etc-work \
-    /etc
 
 # Set hostname
 if [ -f /etc/hostname ]; then

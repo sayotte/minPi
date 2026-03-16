@@ -35,21 +35,22 @@ minPi has three layers of customization:
 
 ## Persisting runtime changes
 
-minPi uses overlayfs on `/etc`. The base system's `/etc` is the read-only
+minPi uses a full-root overlayfs. The entire base system is the read-only
 lower layer; a tmpfs is the writable upper layer. Any changes you make at
-runtime (editing configs, adding files) are automatically captured in the
-upper layer.
+runtime — editing configs, adding SSH keys, creating files anywhere — are
+automatically captured in the upper layer.
 
 ### Saving changes
 
 ```sh
-# Edit whatever you need
+# Edit whatever you need — anywhere on the filesystem
 vi /etc/hostname
+mkdir -p /root/.ssh && vi /root/.ssh/authorized_keys
 vi /etc/wpa_supplicant.conf
 
 # Persist all changes to the boot partition
 mount -o remount,rw /boot
-tar czf /boot/overlay.gz -C /tmp/.overlay/etc-upper .
+tar czf /boot/overlay.gz -C /tmp/.overlay/upper .
 mount -o remount,ro /boot
 ```
 
@@ -58,14 +59,17 @@ clock and the overlay automatically.
 
 ### How it works
 
-On boot, rcS:
-1. Mounts the boot partition read-only at `/boot`
-2. If `/boot/overlay.gz` exists, extracts it into the overlay upper layer
-3. Mounts overlayfs on `/etc` (lower=base, upper=your changes)
-4. Runs init scripts from the merged `/etc/init.d/`
+On boot, before busybox init starts:
+1. `/init` copies the initramfs into a tmpfs as the read-only lower layer
+2. Creates a writable upper layer on a separate tmpfs
+3. If `/boot/overlay.gz` exists, pre-populates the upper layer with it
+4. Mounts overlayfs combining lower + upper as the new root
+5. `switch_root`s into the overlay
+6. Busybox init starts, reads `/etc/inittab`, runs `rcS`
 
-The upper layer contains **only** files you changed or added — never base
-system files.
+The upper layer (`/tmp/.overlay/upper`) contains **only** files you changed
+or added — never base system files. You can inspect it to see exactly what
+differs from the base image.
 
 ### Resetting to defaults
 

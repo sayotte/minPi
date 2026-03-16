@@ -6,8 +6,9 @@ mount -o remount,rw /boot 2>/dev/null
 date -u '+%Y-%m-%d %H:%M:%S' > /boot/fake-hwclock.data
 
 # Save overlay (only files that differ from the base system)
-if [ -d /tmp/.overlay/etc-upper ] && [ "$(ls -A /tmp/.overlay/etc-upper 2>/dev/null)" ]; then
-    tar czf /boot/overlay.gz -C /tmp/.overlay/etc-upper .
+UPPER="/tmp/.overlay/upper"
+if [ -d "$UPPER" ] && [ "$(ls -A "$UPPER" 2>/dev/null)" ]; then
+    tar czf /boot/overlay.gz -C "$UPPER" .
     echo "Overlay saved"
 fi
 
