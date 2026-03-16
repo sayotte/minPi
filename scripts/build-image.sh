@@ -3,7 +3,6 @@ set -e
 
 TOPDIR="$(cd "$(dirname "$0")/.." && pwd)"
 IMG="$TOPDIR/minpi.img"
-IMG_SIZE_MB=128
 PART_OFFSET_SECTORS=2048  # 1MiB offset (2048 * 512 = 1MiB)
 
 echo "=== minPi image builder ==="
@@ -41,6 +40,34 @@ for f in \
         exit 1
     fi
 done
+
+# Calculate image size: sum all files + 1MB partition offset + 4MB headroom
+# FAT32 also needs ~1MB for its own structures
+CONTENT_BYTES=0
+for f in \
+    "$TOPDIR/firmware/bootcode.bin" \
+    "$TOPDIR/firmware/start.elf" \
+    "$TOPDIR/firmware/start4.elf" \
+    "$TOPDIR/firmware/fixup.dat" \
+    "$TOPDIR/firmware/fixup4.dat" \
+    "$TOPDIR/boot/config.txt" \
+    "$TOPDIR/boot/cmdline.txt" \
+    "$TOPDIR/boot/commit.txt" \
+    "$TOPDIR/kernel/kernel8.img" \
+    "$TOPDIR/initramfs.cpio.gz" \
+    "$TOPDIR/overlay.tar.gz"; do
+    [ -f "$f" ] && CONTENT_BYTES=$((CONTENT_BYTES + $(stat -f%z "$f" 2>/dev/null || stat -c%s "$f" 2>/dev/null)))
+done
+# Add DTBs
+if [ -d "$TOPDIR/kernel/dtbs" ]; then
+    for f in "$TOPDIR/kernel/dtbs"/*.dtb; do
+        [ -f "$f" ] && CONTENT_BYTES=$((CONTENT_BYTES + $(stat -f%z "$f" 2>/dev/null || stat -c%s "$f" 2>/dev/null)))
+    done
+fi
+# Round up to MB, add partition offset (1MB) + headroom (4MB)
+IMG_SIZE_MB=$(( (CONTENT_BYTES / 1048576) + 6 ))
+# FAT32 minimum ~33MB
+[ "$IMG_SIZE_MB" -lt 34 ] && IMG_SIZE_MB=34
 
 # Create empty image
 echo "Creating ${IMG_SIZE_MB}MB image..."

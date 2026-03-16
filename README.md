@@ -16,14 +16,17 @@ Zero W are ARMv6 and are not supported.
 
 ## What's in the image
 
-| Component      | Size   | Source                    |
-|----------------|--------|---------------------------|
-| VideoCore firmware | ~5MB | raspberrypi/firmware repo |
-| Linux kernel   | ~8MB   | raspberrypi/linux, rpi-6.6.y branch |
-| busybox        | ~900KB | Alpine Linux static build |
-| dropbear (SSH) | ~1.5MB | Cross-compiled, static    |
-| Init scripts   | ~2KB   | Hand-written shell        |
-| **Total image** | **~15MB** | |
+| Component | Size | Source |
+|---|---|---|
+| Linux kernel 6.12 + modules | ~15MB | raspberrypi/linux, rpi-6.12.y |
+| initramfs (busybox, dropbear, wpa_supplicant, iw, curl, htop, nano, ethtool, lsusb, i2c-tools, libgpiod + deps) | ~26MB | Alpine packages, cross-compiled static binaries |
+| VideoCore firmware | ~5MB | raspberrypi/firmware |
+| Device tree blobs (4 boards) | ~125KB | Built with kernel |
+| Boot config | ~1KB | Hand-written |
+| **Total image** | **~51MB** | Auto-sized to fit |
+
+The system runs entirely from RAM after boot. The SD card can be
+physically removed and the system continues running.
 
 ## Prerequisites
 
@@ -37,21 +40,24 @@ Zero W are ARMv6 and are not supported.
 # Build the container (once)
 podman build -t minpi-build .
 
-# Create a persistent volume for the kernel source (avoids re-cloning)
+# Create persistent volumes for the kernel source and build output
 podman volume create minpi-linux-src
+podman volume create minpi-linux-out
 
-# Fetch Raspberry Pi firmware blobs
-podman run --rm -v .:/build minpi-build /build/scripts/fetch-firmware.sh
+# Fetch Raspberry Pi firmware and WiFi firmware blobs
+podman run --rm -v "$(pwd)":/build minpi-build \
+    sh -c '/build/scripts/fetch-firmware.sh && /build/scripts/fetch-wifi-firmware.sh'
 
 # Build the kernel (~5-10 minutes first time)
-podman run --rm -v .:/build -v minpi-linux-src:/build/linux \
+podman run --rm \
+    -v "$(pwd)":/build \
+    -v minpi-linux-src:/build/linux \
+    -v minpi-linux-out:/build/linux-out \
     minpi-build /build/scripts/build-kernel.sh
 
-# Build the initramfs (busybox + dropbear + init scripts)
-podman run --rm -v .:/build minpi-build /build/scripts/build-initramfs.sh
-
-# Assemble the SD card image
-podman run --rm -v .:/build minpi-build /build/scripts/build-image.sh
+# Build the initramfs and SD card image
+podman run --rm -v "$(pwd)":/build minpi-build \
+    sh -c '/build/scripts/build-initramfs.sh && /build/scripts/build-image.sh'
 ```
 
 ## Flashing
@@ -62,14 +68,14 @@ dd if=minpi.img of=/dev/sdX bs=4M status=progress
 
 ## Connecting
 
-Serial console (via USB-to-serial adapter or HDMI + USB keyboard):
+HDMI + USB keyboard:
 
 ```
 login: root
 (no password)
 ```
 
-Over the network (Pi 3B/3B+ with ethernet):
+Over the network (Pi 3B/3B+ with ethernet, or WiFi if configured):
 
 ```sh
 ssh root@<ip-address>
