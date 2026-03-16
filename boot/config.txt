@@ -7,14 +7,15 @@ arm_64bit=1
 kernel=kernel8.img
 
 # Load initramfs into RAM
-initramfs initramfs.cpio.gz followkernel
+initramfs ramfs.gz followkernel
 
 # Serial console
 enable_uart=1
 
-# GPU memory — minimum, headless by default
-# Increase to 64 or 128 if using HDMI
-gpu_mem=16
+# Let firmware auto-detect and load the correct DTB from boot partition
+
+# GPU memory — increase if using HDMI
+gpu_mem=64
 
 # No splash screen
 disable_splash=1

@@ -3,10 +3,18 @@ set -e
 
 TOPDIR="$(cd "$(dirname "$0")/.." && pwd)"
 IMG="$TOPDIR/minpi.img"
-IMG_SIZE_MB=64
+IMG_SIZE_MB=128
 PART_OFFSET_SECTORS=2048  # 1MiB offset (2048 * 512 = 1MiB)
 
 echo "=== minPi image builder ==="
+
+# Record commit hash
+COMMIT="unknown"
+if command -v git >/dev/null 2>&1 && [ -d "$TOPDIR/.git" ]; then
+    COMMIT=$(git -C "$TOPDIR" rev-parse --short HEAD 2>/dev/null || echo "unknown")
+fi
+echo "$COMMIT" > "$TOPDIR/boot/commit.txt"
+echo "Commit: $COMMIT"
 
 # Verify all pieces exist
 for f in \
@@ -31,10 +39,11 @@ dd if=/dev/zero of="$IMG" bs=1M count="$IMG_SIZE_MB" status=none
 echo "Partitioning..."
 parted -s "$IMG" \
     mklabel msdos \
-    mkpart primary fat32 1MiB 100%
+    mkpart primary fat32 1MiB 100% \
+    set 1 boot on \
+    set 1 lba on
 
 # Format the partition inside the image using mtools
-# mtools needs an mtools.conf that describes the image layout
 PART_OFFSET_BYTES=$((PART_OFFSET_SECTORS * 512))
 PART_SIZE_BYTES=$(( (IMG_SIZE_MB * 1048576) - PART_OFFSET_BYTES ))
 
@@ -64,19 +73,21 @@ copy_file "$TOPDIR/firmware/fixup.dat"
 # Boot config
 copy_file "$TOPDIR/boot/config.txt"
 copy_file "$TOPDIR/boot/cmdline.txt"
+copy_file "$TOPDIR/boot/commit.txt"
 
 # Kernel
 copy_file "$TOPDIR/kernel/kernel8.img"
 
-# DTBs
+# DTBs (firmware auto-selects by board revision)
 if [ -d "$TOPDIR/kernel/dtbs" ]; then
     for dtb in "$TOPDIR/kernel/dtbs"/*.dtb; do
         copy_file "$dtb"
     done
 fi
 
-# initramfs
-copy_file "$TOPDIR/initramfs.cpio.gz"
+# initramfs (8.3-safe filename to avoid FAT long name issues)
+mcopy -i "$PART_FILE" "$TOPDIR/initramfs.cpio.gz" "::ramfs.gz"
+echo "  ramfs.gz ($(ls -lh "$TOPDIR/initramfs.cpio.gz" | awk '{print $5}'))"
 
 # Show contents
 echo ""

@@ -3,6 +3,8 @@
 # Covers: Pi Zero 2 W, 3A+, 3B, 3B+ (all BCM2837/BCM2710)
 
 # --- Platform ---
+# ARCH_BCM is the parent menu; must be on for ARCH_BCM2835 to take effect
+CONFIG_ARCH_BCM=y
 CONFIG_ARCH_BCM2835=y
 CONFIG_SMP=y
 CONFIG_NR_CPUS=4
@@ -57,6 +59,7 @@ CONFIG_BCM2835_WDT=y
 
 # --- Thermal ---
 CONFIG_THERMAL=y
+CONFIG_THERMAL_OF=y
 CONFIG_BCM2835_THERMAL=y
 
 # --- HW RNG ---
@@ -138,7 +141,19 @@ CONFIG_PM=y
 # --- HDMI / framebuffer console ---
 CONFIG_VT=y
 CONFIG_VT_CONSOLE=y
+# Simple framebuffer — uses the fb the GPU firmware already set up.
+# Works immediately, before any DRM driver loads.
+CONFIG_FB_SIMPLE=y
+CONFIG_FB_CFB_FILLRECT=y
+CONFIG_FB_CFB_COPYAREA=y
+CONFIG_FB_CFB_IMAGEBLIT=y
 CONFIG_DRM=y
+CONFIG_DRM_FBDEV_EMULATION=y
+CONFIG_DRM_SIMPLEDRM=y
+# VC4 requires SND + SND_SOC (HDMI audio path, even if we don't use it)
+CONFIG_SOUND=y
+CONFIG_SND=y
+CONFIG_SND_SOC=y
 CONFIG_DRM_VC4=y
 CONFIG_FB=y
 CONFIG_FRAMEBUFFER_CONSOLE=y
@@ -152,7 +167,6 @@ CONFIG_HID_GENERIC=y
 
 # --- Explicitly disabled ---
 # CONFIG_CGROUPS is not set
-# CONFIG_SOUND is not set
 # CONFIG_BT is not set
 # CONFIG_IPV6 is not set
 # CONFIG_NETFILTER is not set

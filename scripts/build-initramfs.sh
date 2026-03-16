@@ -14,23 +14,18 @@ if [ ! -f "$BUSYBOX" ]; then
     # Get the package index to find the current busybox-static filename
     wget -q -O /tmp/APKINDEX.tar.gz "$ALPINE_MIRROR/APKINDEX.tar.gz"
     tar -xzf /tmp/APKINDEX.tar.gz -C /tmp APKINDEX
-    BB_PKG=$(awk '/^P:busybox-binsh$/{found=1} found && /^V:/{print "busybox-binsh-"substr($0,3)".apk"; exit}' /tmp/APKINDEX)
+    BB_PKG=$(awk '/^P:busybox-static$/{found=1} found && /^V:/{print "busybox-static-"substr($0,3)".apk"; exit}' /tmp/APKINDEX)
 
     if [ -z "$BB_PKG" ]; then
-        echo "ERROR: Could not find busybox-binsh package in Alpine index"
+        echo "ERROR: Could not find busybox-static package in Alpine index"
         exit 1
     fi
 
     echo "Downloading $BB_PKG..."
     wget -q -O /tmp/busybox.apk "$ALPINE_MIRROR/$BB_PKG"
-    tar -xzf /tmp/busybox.apk -C /tmp bin/busybox 2>/dev/null || true
-
-    if [ ! -f /tmp/bin/busybox ]; then
-        # Try the busybox package directly
-        BB_PKG=$(awk '/^P:busybox$/{found=1} found && /^V:/{print "busybox-"substr($0,3)".apk"; exit}' /tmp/APKINDEX)
-        echo "Trying $BB_PKG..."
-        wget -q -O /tmp/busybox.apk "$ALPINE_MIRROR/$BB_PKG"
-        tar -xzf /tmp/busybox.apk -C /tmp bin/busybox 2>/dev/null || true
+    tar -xzf /tmp/busybox.apk -C /tmp bin/busybox.static 2>/dev/null || true
+    if [ -f /tmp/bin/busybox.static ]; then
+        mv /tmp/bin/busybox.static /tmp/bin/busybox
     fi
 
     cp /tmp/bin/busybox "$BUSYBOX"
@@ -85,7 +80,26 @@ else
     echo "dropbear already present"
 fi
 
-# --- Create init symlink ---
+# --- Create busybox applet symlinks ---
+echo "Installing busybox symlinks..."
+for applet in $("$INITRAMFS/bin/busybox" --list 2>/dev/null || true); do
+    case "$applet" in
+        # sbin applets
+        init|getty|syslogd|klogd|ifconfig|ip|route|udhcpc|reboot|halt|poweroff|hwclock|mdev|modprobe|insmod|rmmod|lsmod|switch_root|pivot_root|losetup|fdisk|mkswap|swapon|swapoff|mount|umount)
+            ln -sf ../bin/busybox "$INITRAMFS/sbin/$applet"
+            ;;
+        # skip busybox itself
+        busybox)
+            ;;
+        # everything else goes in /bin
+        *)
+            ln -sf busybox "$INITRAMFS/bin/$applet"
+            ;;
+    esac
+done
+
+# /init for kernel to find
+ln -sf bin/busybox "$INITRAMFS/init"
 ln -sf ../bin/busybox "$INITRAMFS/sbin/init"
 
 # --- Set permissions ---
