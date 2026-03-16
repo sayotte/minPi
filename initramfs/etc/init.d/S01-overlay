@@ -11,9 +11,9 @@ start)
     mkdir -p /boot
     mount -t vfat -o ro /dev/mmcblk0p1 /boot 2>/dev/null
 
-    if [ -f /boot/overlay.tar.gz ]; then
+    if [ -f /boot/overlay.gz ]; then
         echo "Applying boot overlay..."
-        tar xzf /boot/overlay.tar.gz -C /
+        tar xzf /boot/overlay.gz -C /
     fi
     ;;
 esac

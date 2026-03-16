@@ -16,6 +16,17 @@ fi
 echo "$COMMIT" > "$TOPDIR/boot/commit.txt"
 echo "Commit: $COMMIT"
 
+# Build overlay tarball from overlay/ directory if it has content
+OVERLAY_DIR="$TOPDIR/overlay"
+OVERLAY_TAR="$TOPDIR/overlay.tar.gz"
+if [ -d "$OVERLAY_DIR" ] && [ "$(find "$OVERLAY_DIR" -not -name '.git*' -not -path "$OVERLAY_DIR" -type f | head -1)" ]; then
+    echo "Packing boot overlay..."
+    tar czf "$OVERLAY_TAR" -C "$OVERLAY_DIR" --exclude='.git*' .
+    echo "  overlay.tar.gz ($(ls -lh "$OVERLAY_TAR" | awk '{print $5}'))"
+else
+    rm -f "$OVERLAY_TAR"
+fi
+
 # Verify all pieces exist
 for f in \
     "$TOPDIR/firmware/bootcode.bin" \
@@ -88,6 +99,12 @@ fi
 # initramfs (8.3-safe filename to avoid FAT long name issues)
 mcopy -i "$PART_FILE" "$TOPDIR/initramfs.cpio.gz" "::ramfs.gz"
 echo "  ramfs.gz ($(ls -lh "$TOPDIR/initramfs.cpio.gz" | awk '{print $5}'))"
+
+# Boot overlay (if present)
+if [ -f "$TOPDIR/overlay.tar.gz" ]; then
+    mcopy -i "$PART_FILE" "$TOPDIR/overlay.tar.gz" "::overlay.gz"
+    echo "  overlay.gz ($(ls -lh "$TOPDIR/overlay.tar.gz" | awk '{print $5}'))"
+fi
 
 # Show contents
 echo ""

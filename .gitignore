@@ -21,6 +21,9 @@ initramfs/lib/
 # Alpine package cache
 .apk-cache/
 
+# Built overlay tarball
+overlay.tar.gz
+
 # Generated at image build time
 boot/commit.txt
 

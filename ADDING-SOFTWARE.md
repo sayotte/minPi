@@ -26,7 +26,7 @@ vi /etc/hostname
 
 # Persist it to the boot partition
 mount -o remount,rw /boot
-tar czf /boot/overlay.tar.gz -C / etc/wpa_supplicant.conf etc/hostname
+tar czf /boot/overlay.gz -C / etc/wpa_supplicant.conf etc/hostname
 mount -o remount,ro /boot
 ```
 
@@ -41,11 +41,11 @@ To add files to an existing overlay without losing what's already there:
 mount -o remount,rw /boot
 mkdir -p /tmp/overlay
 cd /tmp/overlay
-tar xzf /boot/overlay.tar.gz 2>/dev/null
+tar xzf /boot/overlay.gz 2>/dev/null
 # Copy in new/changed files, preserving paths
 cp /etc/some-new-config etc/
-tar czf /boot/overlay.tar.gz *
-cp /tmp/overlay.tar.gz /boot/overlay.tar.gz   # not needed, tar wrote in place
+tar czf /boot/overlay.gz *
+cp /tmp/overlay.gz /boot/overlay.gz   # not needed, tar wrote in place
 mount -o remount,ro /boot
 ```
 
@@ -53,7 +53,7 @@ mount -o remount,ro /boot
 
 ```sh
 mount -o remount,rw /boot
-rm /boot/overlay.tar.gz
+rm /boot/overlay.gz
 mount -o remount,ro /boot
 ```
 
